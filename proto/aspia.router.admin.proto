@@ -1,0 +1,149 @@
+syntax = "proto3";
+
+package info.malenkov.aspiabot.proto;
+
+option java_multiple_files = true;
+
+//
+// Based on router_admin.proto 2.4
+//
+
+import "aspia.common.proto";
+import "aspia.router.common.proto";
+
+message Session
+{
+    int64 session_id           = 1;
+    RouterSession session_type = 2;
+    bytes session_data         = 3;
+    fixed64 timepoint          = 4;
+    string ip_address          = 5;
+    Version version            = 6;
+    string os_name             = 7;
+    string computer_name       = 8;
+}
+
+enum SessionRequestType
+{
+    SESSION_REQUEST_UNKNOWN    = 0;
+    SESSION_REQUEST_DISCONNECT = 1;
+}
+
+message SessionRequest
+{
+    SessionRequestType type = 1;
+    int64 session_id        = 2;
+}
+
+message SessionResult
+{
+    enum ErrorCode
+    {
+        SUCCESS            = 0;
+        INVALID_REQUEST    = 1;
+        INTERNAL_ERROR     = 2;
+        INVALID_SESSION_ID = 3;
+    }
+
+    SessionRequestType type    = 1;
+    ErrorCode error_code       = 2;
+}
+
+message SessionListRequest
+{
+    int64 dummy = 1;
+}
+
+message SessionList
+{
+    enum ErrorCode
+    {
+        SUCCESS       = 0;
+        UNKNOWN_ERROR = 1;
+    }
+
+    ErrorCode error_code     = 1;
+    repeated Session session = 2;
+}
+
+message HostSessionData
+{
+    repeated fixed64 host_id = 1;
+}
+
+message RelaySessionData
+{
+    uint64 pool_size = 1;
+}
+
+message User
+{
+    int64 entry_id  = 1;
+    string name     = 2;
+    string group    = 3;
+    bytes salt      = 4;
+    bytes verifier  = 5;
+    uint32 sessions = 6;
+    uint32 flags    = 7;
+}
+
+message UserListRequest
+{
+    uint32 dummy = 1;
+}
+
+message UserList
+{
+    enum ErrorCode
+    {
+        SUCCESS       = 0;
+        UNKNOWN_ERROR = 1;
+    }
+
+    ErrorCode error_code = 1;
+    repeated User user   = 2;
+}
+
+enum UserRequestType
+{
+    USER_REQUEST_UNKNOWN = 0;
+    USER_REQUEST_ADD     = 1;
+    USER_REQUEST_MODIFY  = 2;
+    USER_REQUEST_DELETE  = 3;
+}
+
+message UserRequest
+{
+    UserRequestType type = 1;
+    User user            = 2;
+}
+
+message UserResult
+{
+    enum ErrorCode
+    {
+        SUCCESS        = 0;
+        INTERNAL_ERROR = 1;
+        INVALID_DATA   = 2;
+        ALREADY_EXISTS = 3;
+    }
+
+    UserRequestType type = 1;
+    ErrorCode error_code = 2;
+}
+
+message RouterToAdmin
+{
+    SessionList session_list     = 1;
+    SessionResult session_result = 2;
+    UserList user_list           = 3;
+    UserResult user_result       = 4;
+}
+
+message AdminToRouter
+{
+    SessionListRequest session_list_request = 1;
+    SessionRequest session_request          = 2;
+    UserListRequest user_list_request       = 3;
+    UserRequest user_request                = 4;
+}

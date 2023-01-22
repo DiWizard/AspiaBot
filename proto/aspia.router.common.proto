@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package info.malenkov.aspiabot.proto;
+
+option java_multiple_files = true;
+
+//
+// Based on router_common.proto 2.4
+//
+
+enum RouterSession
+{
+    ROUTER_SESSION_UNKNOWN = 0;
+    ROUTER_SESSION_ADMIN   = 1;
+    ROUTER_SESSION_CLIENT  = 2;
+    ROUTER_SESSION_HOST    = 4;
+    ROUTER_SESSION_RELAY   = 8;
+}
+
+message RelayKey
+{
+    enum Type
+    {
+        TYPE_UNKNOWN = 0;
+        TYPE_X25519  = 1;
+    }
+
+    enum Encryption
+    {
+        ENCRYPTION_UNKNOWN           = 0;
+        ENCRYPTION_CHACHA20_POLY1305 = 1;
+    }
+
+    // Unique key identifier in the proxy pool.
+    uint32 key_id = 1;
+
+    // Key type.
+    Type type = 2;
+
+    // Encryption algorithm.
+    Encryption encryption = 3;
+
+    // Public key of the proxy.
+    bytes public_key = 4;
+
+    // Initialization vector.
+    bytes iv = 5;
+}
+
+message RelayCredentials
+{
+    string host  = 1;
+    uint32 port  = 2;
+    RelayKey key = 3;
+    bytes secret = 4;
+}
