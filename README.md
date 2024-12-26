@@ -23,6 +23,7 @@ Optional arguments:
   -m=<..>, --memeo=<..>		add mnemonic names for hosts' records
   -t=<..>, --timeout=<..>	set timeout (in seconds) for TCP/IP session
   -i=<..>, --id=<..>		print TCP/IP address for requred ID
+  -n=<..>, --json=<..>          export hosts list to json file
 
 Mandatory arguments to long options are mandatory for short options too.
 ```
