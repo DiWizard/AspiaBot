@@ -66,7 +66,7 @@ Linux/MacOS
 
 Windows
 ``` sh
-C:\PROGRA~1\Zulu\zulu-8\bin\java.exe -cp C:\PROGRA~1\AspiaBot\lib\* info.malenkov.aspiabot.App  -cp "/Users/Shared/AspiaBot/lib/*" info.malenkov.aspiabot.App -a="1.2.3.4" -u="admin" -p="password" -o="/etc/hosts" -m"3:sql;9:Fido;18:doe_j"
+C:\PROGRA~1\Zulu\zulu-8\bin\java.exe -cp C:\PROGRA~1\AspiaBot\lib\* info.malenkov.aspiabot.App -a="1.2.3.4" -u="admin" -p="password" -o="/etc/hosts" -m"3:sql;9:Fido;18:doe_j"
 ```
 
 System requirements
