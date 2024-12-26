@@ -1,15 +1,21 @@
+//
+// SPRMatch v.1.2 (11.10.2024)
+//
+
 package info.malenkov.aspiabot;
 
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.Arrays;
 
 import org.bouncycastle.jcajce.provider.digest.Blake2b.Blake2b512;
 import org.bouncycastle.jcajce.provider.digest.Blake2s.Blake2s256;
+import org.bouncycastle.util.encoders.Hex;
 
 public class SPRMatch{
-    
+
 	public static String bytesToHex(byte[] bytes, boolean... toUpper) {
 		final char[] HEX_ARRAY = "0123456789abcdef".toCharArray();
 		boolean convert2Upper = (toUpper.length >= 1) ? toUpper[0] : false;
@@ -27,33 +33,57 @@ public class SPRMatch{
         	return new String(hexChars);
     }
 
+    static BigInteger RAND(int len, SecureRandom random){
+        return org.bouncycastle.util.BigIntegers.createRandomBigInteger(len, random);
+    }
+    
+    static byte[] HS2BA(String data){
+        return Hex.decode(data);
+    }
+
+	static String BA2HS(byte[] bytes, boolean... toUpper) {
+		boolean convert2Upper = (toUpper.length >= 1) ? toUpper[0] : false;
+
+		if(convert2Upper) 
+    	    return Hex.toHexString(bytes).toUpperCase();
+        else
+        	return Hex.toHexString(bytes);
+    }
+
     static byte[] BI2BA(BigInteger value){
-        byte[] array = value.toByteArray();
+        return org.bouncycastle.util.BigIntegers.asUnsignedByteArray(value);
+    }
 
-		if (array[0] == 0) {
-            byte[] tmp = new byte[array.length - 1];
-            System.arraycopy(array, 1, tmp, 0, tmp.length);
-            array = tmp;
-        }
+    static byte[] BI2BA(BigInteger value, int minLen){
+        return zeroFill(org.bouncycastle.util.BigIntegers.asUnsignedByteArray(value), minLen);
+    }
 
-		return array;
+    static BigInteger BA2BI(byte[] data){
+        return org.bouncycastle.util.BigIntegers.fromUnsignedByteArray(data);
     }
 
 	// hash = BLAKE2s256(data)
 	static BigInteger hash_BLAKE2s256(BigInteger BN_data) throws NoSuchAlgorithmException{
-		Blake2s256 blake2s256 = new Blake2s256();
-		blake2s256.update(BI2BA(BN_data));
-	
-		return new BigInteger(1,blake2s256.digest());
-	}
+        BigInteger result;
 
+            Blake2s256 blake2s256 = new Blake2s256();
+            blake2s256.update(BI2BA(BN_data));
+            result = BA2BI(blake2s256.digest());
+
+		return result;
+	}
 
 	// hash = BLAKE2b512(data)
     static BigInteger hash_BLAKE2b512(BigInteger BN_data) throws NoSuchAlgorithmException{
-		Blake2b512 blake2b512 = new Blake2b512();
-		blake2b512.update(BI2BA(BN_data));
+        BigInteger result;
+
+        do{
+		    Blake2b512 blake2b512 = new Blake2b512();
+		    blake2b512.update(BI2BA(BN_data));
+            result = BA2BI(blake2b512.digest());
+        }while(BI2BA(result).length*8 != 512);
 	
-		return new BigInteger(1,blake2b512.digest());
+		return result;
     }
 
     // x = BLAKE2b512(s | BLAKE2b512(I | ":" | p))
@@ -69,7 +99,7 @@ public class SPRMatch{
 		blake2b512bis.update(BI2BA(BN_s));
         blake2b512bis.update(blake2b512.digest());
         
-        return new BigInteger(1, blake2b512bis.digest());
+        return BA2BI(blake2b512bis.digest());
     }
 
 
@@ -86,7 +116,7 @@ public class SPRMatch{
 		Blake2b512 blake2b512 = new Blake2b512();
 		blake2b512.update(xy);
 
-        return new BigInteger(1, blake2b512.digest());
+        return BA2BI(blake2b512.digest());
     }
 
     // calc_u() => calc_xy(A, B, N)
@@ -126,6 +156,21 @@ public class SPRMatch{
 
 		return BN_B;
     }
+
+	// calcServerKey
+	// S = (A * v^u) ^ b % N
+	static BigInteger calcServerKey(BigInteger BN_A, BigInteger BN_v, BigInteger BN_u, BigInteger BN_b, BigInteger BN_N){
+		// BN_mod_exp(tmp, v, u, N, ctx)) <--- tmp = (v ^ u) mod N 
+		BigInteger tmp = BN_v.modPow(BN_u, BN_N);
+
+		// BN_mod_mul(tmp, A, tmp, N, ctx)) <--- tmp = (A * tmp) mod N
+		tmp = BN_A.multiply(tmp).mod(BN_N);
+
+		// BN_mod_exp(S, tmp, b, N, ctx)) <--- S = (tmp ^ b) mod N
+		BigInteger BN_S = tmp.modPow(BN_b, BN_N);
+
+		return BN_S;
+	}
 
 	// calcClientKey()
 	// K = (B - (k * g^x)) ^ (a + (u * x)) % N
@@ -172,4 +217,12 @@ public class SPRMatch{
         return result;
     }
 
+    private static byte [] zeroFill(byte[] srcData, int len){
+		byte[] prefix = null;
+		if(srcData.length < len){
+			prefix = new byte[len - srcData.length];
+		}
+       
+		return org.bouncycastle.util.Arrays.concatenate(prefix, srcData);
+	}
 }

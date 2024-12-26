@@ -5,8 +5,12 @@ import java.io.BufferedOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.lang.reflect.Field;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
@@ -19,8 +23,16 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.security.Security;
+
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import com.google.protobuf.ByteString;
+
+import org.json.JSONObject;
 
 import info.malenkov.aspiabot.proto.Encryption;
 import info.malenkov.aspiabot.proto.HostSessionData;
@@ -42,7 +54,7 @@ import info.malenkov.aspiabot.proto.Version;
 
 public class AspiaBot {
 	private final static int abMajorVersion = 1;
-	private final static int abMinorVesion = 0;
+	private final static int abMinorVesion = 2;
 	private final static int abPath = 0;
 	private final static int abRevision = 0;
 
@@ -57,13 +69,14 @@ public class AspiaBot {
 	private static int aspiaPort = 0;
 	private static String aspiaUser  = null;
 	private static String aspiaPassword  = null;
+	private static String aspiaJson = null;
+	
 	private static int socketTimeout = 0;
 	
 	private static String abName = "AspiaBot";
 	private static String abOS = "Java VM";
-	private static String abCopyright = "(c) Copyright 2023 Maxim V. Malenkov\n\nThird-party component:\n- guava (c) 2009 Google Inc.; Apache-2.0 license\n- protobuf (c) 2008 Google Inc.; BSD 3-Clause License\n- bouncycastle (c) 2000 - 2021 The Legion of the Bouncy Castle Inc; MIT license";
+	private static String abCopyright = "(c) Copyright 2024 Maxim V. Malenkov\n\nThird-party component:\n- guava (c) 2009 Google Inc.; Apache-2.0 license\n- protobuf (c) 2008 Google Inc.; BSD 3-Clause License\n- bouncycastle (c) 2000 - 2021 The Legion of the Bouncy Castle Inc; MIT license";
 
-	
 	public static final void run() throws Exception {
 		Encryption serverEncryption = Encryption.ENCRYPTION_UNKNOWN;
 		SPREngine sprEngine = null;
@@ -71,12 +84,16 @@ public class AspiaBot {
 		List<HostInfo> hostInfoList = new ArrayList<HostInfo>();
 		byte[] data = null;
 		
+		Security.addProvider(new BouncyCastleProvider());
+		JSONObject table = new JSONObject();
+
+		if(printJVMInfo) printFullJVMInfo();
+
 		if(!silent || debug){
 			System.out.println("Connecting to " + aspiaURL + ":" + aspiaPort);
 			if(InetAddress.getLocalHost().getHostName().length()>0){
 				abName = InetAddress.getLocalHost().getHostName();
 			}
-			if(printJVMInfo) printFullJVMInfo();
 			if(!debug) System.out.println("Please, wait ...");
 		}
 
@@ -184,7 +201,16 @@ public class AspiaBot {
 						debugPrintLn("");
 						SessionChallenge sessionChallenge = SessionChallenge.parseFrom(sprEngine.decrypt(data));
 						Version aspiaVersion = sessionChallenge.getVersion();
-						debugPrintLn("Aspia       = " + aspiaVersion.getMajor() + "." + aspiaVersion.getMinor() + "." + aspiaVersion.getPatch() + " " + aspiaVersion.getRevision());
+
+						JSONObject row = new JSONObject();
+						row.put("version", aspiaVersion.getMajor() + "." + aspiaVersion.getMinor() + "." + aspiaVersion.getPatch() + " Rev.: " + aspiaVersion.getRevision());
+						row.put("sessions", sessionChallenge.getSessionTypes());
+						row.put("cores", Integer.valueOf(sessionChallenge.getCpuCores()));
+						row.put("os", sessionChallenge.getOsName());
+						row.put("name", sessionChallenge.getComputerName());
+						table.append("router", row);
+
+						debugPrintLn("Aspia       = " + aspiaVersion.getMajor() + "." + aspiaVersion.getMinor() + "." + aspiaVersion.getPatch() + " Rev.: " + aspiaVersion.getRevision());
 						debugPrintLn("Sessions    = " + sessionChallenge.getSessionTypes());
 						debugPrintLn("CPU cores   = " + sessionChallenge.getCpuCores());
 						debugPrintLn("OS name     = " + sessionChallenge.getOsName());
@@ -234,24 +260,36 @@ public class AspiaBot {
 						debugPrintLn("");
 						RouterToAdmin routerToAdmin = RouterToAdmin.parseFrom(sprEngine.decrypt(data));
 						SessionList sessionList = routerToAdmin.getSessionList();
-						if(sessionList.getErrorCodeValue() == 0){
+
+						if(sessionList.getErrorCodeValue() == 0 && requestedId == 0 ){
 							int sessionCount = sessionList.getSessionCount();
 							debugPrintLn("SessionCount = " + sessionCount);
-							if(requestedId == 0 && hosts == null && !debug){
+							if(requestedId == 0 && !debug){
 								System.out.println("");
-								System.out.println("+------+-----------------+---------------------+------------------------------+");
-								System.out.println("|  ID  |   IP ADDRESS    |      HOST NAME      |     OPERATION SYSTEM         |");
-								System.out.println("+------+-----------------+---------------------+------------------------------+");
+								System.out.println("+------+----------------------+-----------------+---------------------+----------------------------------------+");
+								System.out.println("|  ID  | ASPIA HOST           |   IP ADDRESS    |      HOST NAME      |     OPERATION SYSTEM                   |");
+								System.out.println("+------+----------------------+-----------------+---------------------+----------------------------------------+");
 							}
 							for (Session session : sessionList.getSessionList()) {
 								HostSessionData hostSessinData = HostSessionData.parseFrom(session.getSessionData());
 								if(session.getSessionTypeValue() == RouterSession.ROUTER_SESSION_HOST_VALUE){
 									for(int inc=0; inc < hostSessinData.getHostIdCount(); inc++){
 										debugPrintLn(session.getSessionId() + "/" + hostSessinData.getHostId(inc) + " \t " + session.getIpAddress() + " \t " + session.getComputerName() + " \t " + session.getOsName());
-										if(requestedId == 0 && hosts == null && !debug){
-											System.out.println("| " + String.format("%4s", hostSessinData.getHostId(inc))  + " | " + String.format("%15s", session.getIpAddress())  + " | " + String.format("%-19s",session.getComputerName()) + " | " + String.format("%-28s",session.getOsName()) + " | ");
-											System.out.println("+------+-----------------+---------------------+------------------------------+");
-
+										if(requestedId == 0 && requestedId == 0){
+											JSONObject row = new JSONObject();
+											row.put("id", hostSessinData.getHostId(inc));
+											row.put("version", session.getVersion().getMajor() + "." + + session.getVersion().getMinor() + "." + +session.getVersion().getPatch() + " Rev.: " + +session.getVersion().getRevision());
+											row.put("ip", session.getIpAddress());
+											row.put("name", session.getComputerName());
+											row.put("os", session.getOsName());
+											table.append("hosts", row);
+											System.out.println("| " + 
+												String.format("%4s", hostSessinData.getHostId(inc))  + " | " + 
+												String.format("%-20s", session.getVersion().getMajor() + "." + + session.getVersion().getMinor() + "." + +session.getVersion().getPatch() + " Rev.: " + +session.getVersion().getRevision()) + " | " +
+												String.format("%15s", session.getIpAddress())  + " | " + 
+												String.format("%-19s",session.getComputerName()) + " | " + 
+												String.format("%-38s",session.getOsName()) + " | ");
+											System.out.println("+------+----------------------+-----------------+---------------------+----------------------------------------+");
 										}
 										hostInfoList.add(new HostInfo(hostSessinData.getHostId(inc), session.getSessionId(), session.getIpAddress(), session.getComputerName(), session.getOsName()));
 									}
@@ -303,7 +341,7 @@ public class AspiaBot {
 								buffer.set(0,buffer.get(0).substring(1));
 							}
 						}else{
-							buffer = Files.readAllLines(path);	
+							buffer = Files.readAllLines(path, StandardCharsets.US_ASCII);	
 						}
 					}
 					for(HostInfo host: hostInfoList){
@@ -312,7 +350,7 @@ public class AspiaBot {
 						String dnsName = host.getHostId() + domain + ".aspia.local";
 						String dnsNameMemo = null;
 						String nowJp = (new SimpleDateFormat("yyyy-MM-dd HH:mm Z")).format(new Date());
-						String comment = "Aspia host ID:" + host.getHostId() +"; " + host.getName() + "; " + host.getOs() +"; "+ nowJp +";";
+						String comment = "Aspia host ID:" + host.getHostId() + "; " + host.getName() + "; " + host.getOs() +"; "+ nowJp +";";
 		
 						for (int inc=0; inc<buffer.size(); inc++) {
 							if(buffer.get(inc).trim().toLowerCase().contains(" " + dnsName.toLowerCase()) || buffer.get(inc).trim().toLowerCase().contains("\t" + dnsName.toLowerCase())){
@@ -345,12 +383,11 @@ public class AspiaBot {
 
 
 					PrintWriter hostFileWriter;
-
 					if(uft8File){
 						hostFileWriter = new PrintWriter(hosts, "UTF-8");
 						hostFileWriter.write(0xfeff);
 					}else{
-						hostFileWriter = new PrintWriter(hosts);
+						hostFileWriter = new PrintWriter(hosts, "US-ASCII");
 					}
 					
 					for(String string: buffer){
@@ -360,6 +397,15 @@ public class AspiaBot {
 						hostFileWriter.println(string);
 					}
 					hostFileWriter.close();
+
+				}
+
+				if(aspiaJson != null){
+					PrintWriter jsonFileWriter;
+					jsonFileWriter = new PrintWriter(aspiaJson, "UTF-8");
+					jsonFileWriter.write(0xfeff);
+					jsonFileWriter.println(table);
+					jsonFileWriter.close();
 				}
 			}
 
@@ -371,12 +417,13 @@ public class AspiaBot {
 					}
 				}
 			}
-
 			System.exit(exitCode);
 
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+
+		System.exit(-1);
 	}
 
 	private static byte[] addSize(byte[] value) {
@@ -603,6 +650,10 @@ public class AspiaBot {
 		socketTimeout = value * 1000;
 	}
 
+	static public void setJsonFile(String value){
+		aspiaJson = value;
+	}
+
 	static public void printVersion(){
 		System.out.println(abName + " v." + abMajorVersion + "." + abMinorVesion + "." + abRevision);
 		System.out.println(abCopyright);
@@ -614,6 +665,24 @@ public class AspiaBot {
 				abOS = System.getProperty("os.name") + " (" + System.getProperty("os.arch") + "), Java: " + System.getProperty("java.vendor") + " " + System.getProperty("java.version");
 			}
 		}
+	}
+
+	public static Future<Boolean> portIsOpen(final ExecutorService es, final String ip, final int port, final int timeout) {
+		return es.submit(new Callable<Boolean>() {
+			@Override public Boolean call() {
+				try {
+				Socket socket = new Socket();
+				socket.connect(new InetSocketAddress(ip, port), timeout);
+				socket.close();
+				// aspiaIps.add(ip);
+				System.out.print("+");
+				return true;
+				} catch (Exception ex) {
+				System.out.print(".");
+				return false;
+				}
+			}
+		});
 	}
 
 	static class HostInfo{
@@ -636,6 +705,21 @@ public class AspiaBot {
 		public String getIp() { return ip; }
 		public String getName() { return name; }
 		public String getOs() { return os; }
+	}
+
+	public static String getConsoleEncoding() throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException {
+		// if(System.console() == null || !System.getProperty("os.name").toLowerCase().contains("win")) {
+		// 	return;
+		// }else{
+		// 	System.console()
+		// }
+
+		final Class<? extends PrintStream> stdOutClass = System.out.getClass();
+		final Field charOutField = stdOutClass.getDeclaredField("charOut");
+		charOutField.setAccessible(true);
+		OutputStreamWriter o = (OutputStreamWriter) charOutField.get(System.out);
+		return o.getEncoding();
+	
 	}
 
 }

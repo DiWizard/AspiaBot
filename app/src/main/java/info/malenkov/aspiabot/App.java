@@ -43,6 +43,10 @@ public class App {
 	private static final String CLK_HELP = "--help";
 	private static final String CLK_HELP_S = "-h";
 
+	private static final String CLK_JSON = "--json";
+	private static final String CLK_JSON_S = "-n";
+
+
 	private static String commandLineKeys[] = 
 	{
 		CLK_SILENT, CLK_SILENT_S,
@@ -57,7 +61,8 @@ public class App {
 		CLK_PASSWORD, CLK_PASSWORD_S,
 		CLK_ID, CLK_ID_S,
 		CLK_VERSION, CLK_VERSION_S,
-		CLK_HELP, CLK_HELP_S
+		CLK_HELP, CLK_HELP_S,
+		CLK_JSON, CLK_JSON_S
 	};
 
 	private static CommandLineParcer commandLineParcer;
@@ -84,9 +89,19 @@ public class App {
 		commandLineParcer = new CommandLineParcer(args, commandLineKeys);
 		if(commandLineParcer.getKeysCount() == 0 || commandLineParcer.getUnknownKeysCount() > 0)
 		{
+			System.out.println("<!> Keys found: " + commandLineParcer.getKeysCount());
+			System.out.println("<!> Unknown keys found: " + commandLineParcer.getUnknownKeysCount());
+			System.out.println("<!> Unknown key(s):" + String.join(",", commandLineParcer.getUnknownKeys()) + "\n");
 			help();
 		}else if(commandLineParcer.isKeyExist(CLK_HELP_S) || commandLineParcer.isKeyExist(CLK_HELP)){
 			help();
+		}else if(commandLineParcer.isKeyExist(CLK_JVM_S) || commandLineParcer.isKeyExist(CLK_JVM)){
+			if(System.getProperty("java.vendor").length() > 0 && System.getProperty("java.version").length() > 0){
+				System.out.println("JavaVM version: " + System.getProperty("java.vendor") + " " + System.getProperty("java.version"));
+				if(System.getProperty("os.name").length() > 0 && System.getProperty("os.arch").length() > 0){
+					System.out.println("Running on " + System.getProperty("os.name") + " (" + System.getProperty("os.arch") + ")");
+				}
+			}
 		}else{
 			if(commandLineParcer.isKeyExist(CLK_VERSION_S) || commandLineParcer.isKeyExist(CLK_VERSION)){
 				AspiaBot.printVersion();
@@ -189,6 +204,13 @@ public class App {
 					AspiaBot.setSilent(true);
 				}
 
+				if(commandLineParcer.isKeyExist(CLK_JSON_S)){
+					AspiaBot.setJsonFile(commandLineParcer.getKeyValue(CLK_JSON_S));
+				}
+				if(commandLineParcer.isKeyExist(CLK_JSON)){
+					AspiaBot.setJsonFile(commandLineParcer.getKeyValue(CLK_JSON));
+				}
+
 				if(run){
 					AspiaBot.run();
 				}
@@ -197,7 +219,7 @@ public class App {
     }
 
 	private static void help(){
-		System.out.println("Usage: AspiaBot [-hvsgjdomti] -a=ip[:port] -u=user -p=password");
+		System.out.println("Usage: AspiaBot [-hvsgjdomtin] -a=ip[:port] -u=user -p=password");
 		System.out.println();
 		System.out.println("Required arguments: ");
 		System.out.println("  -a=<..>, --address=<..>\tAspia router IP adress [:optional port numbet]");
@@ -206,7 +228,7 @@ public class App {
 		System.out.println();
 		System.out.println("Optional arguments: ");
 		System.out.println("  -h, --help\t\t\tthis help");		
-		System.out.println("  -v, --silent\t\t\tprint version");		
+		System.out.println("  -v, --version\t\t\tprint version");		
 		System.out.println("  -s, --silent\t\t\tsilent mode");		
 		System.out.println("  -g, --debug\t\t\tprint full session debug");
 		System.out.println("  -j, --jvm\t\t\tprint Java runtime environment");
@@ -215,6 +237,7 @@ public class App {
 		System.out.println("  -m=<..>, --memeo=<..>\t\tadd mnemonic names for hosts' records");
 		System.out.println("  -t=<..>, --timeout=<..>\tset timeout (in seconds) for TCP/IP session");		
 		System.out.println("  -i=<..>, --id=<..>\t\tprint TCP/IP address for requred ID");		
+		System.out.println("  -n=<..>, --json=<..>\t\texport hosts list to json file");		
 		System.out.println();
 		System.out.println("Mandatory arguments to long options are mandatory for short options too.");
 		System.out.println();
