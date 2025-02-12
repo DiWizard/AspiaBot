@@ -1,11 +1,11 @@
 # AspiaBot
-Dynamic DNS realization for Aspia remote control application (https://aspia.org)
+**Dynamic DNS realization for Aspia remote** control application (https://aspia.org)
 
 Usage
 -------------------
 
 ```
-AspiaBot [-hvsgjdomti] -a=ip[:port] -u=user -p=password
+AspiaBot [-hvsgjdomti] -a=ip[:port] -u=<user> -p=<password>
 
 Required arguments: 
   -a=<..>, --address=<..>	Aspia router IP adress [:optional port numbet]
