@@ -1,5 +1,5 @@
 # AspiaBot
-**Dynamic DNS realization for Aspia remote** control application (https://aspia.org)
+Dynamic DNS realization for Aspia remote control application (https://aspia.org)
 
 Usage
 -------------------
