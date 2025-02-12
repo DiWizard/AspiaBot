@@ -31,30 +31,30 @@ Usage example (basic)
 ---------------------
 Linux
 ``` sh
-sudo AspiaBot -a=1.2.3.4 -u=admin -p=password -o=/etc/hosts
+sudo ./AspiaBot -a=1.2.3.4 -u=admin -p=password -o=/etc/hosts
 ```
 Mac OS
 ``` sh
-sudo AspiaBot -a=1.2.3.4 -u=admin -p=password -o=/private/etc/hosts
+sudo ./AspiaBot -a=1.2.3.4 -u=admin -p=password -o=/private/etc/hosts
 ```
 Windows
 ``` sh
-AspiaBot -a=1.2.3.4 -u=admin -p=password -o="c:\windows\system32\drivers\etc\hosts"
+AspiaBot.bat -a=1.2.3.4 -u=admin -p=password -o="c:\windows\system32\drivers\etc\hosts"
 ```
 
 Usage example (advanced)
 ------------------------
 List all active session on router:
 ``` sh
-AspiaBot -a=1.2.3.4 -u=admin -p=password
+AspiaBot.bat -a=1.2.3.4 -u=admin -p=password
 ```
 Get IP-address by ID:
 ``` sh
-AspiaBot -a=1.2.3.4 -u=admin -p=password -i=8 -s
+AspiaBot.bat -a=1.2.3.4 -u=admin -p=password -i=8 -s
 ```
-Add additional name for some host records:
+Add additional name for some host records (linux version):
 ``` sh
-sudo AspiaBot -a=1.2.3.4 -u=admin -p=password -o=/etc/hosts -m"3:sql;9:Fido;18:doe_j"
+sudo ./AspiaBot -a=1.2.3.4 -u=admin -p=password -o=/etc/hosts -m"3:sql;9:Fido;18:doe_j"
 ```
 
 Direct run (for scheduled tasks)
